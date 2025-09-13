@@ -43,14 +43,13 @@ async fn main() -> Result<()> {
             }
 
             // Validate project_id if provided
-            if let Some(pid) = project_id {
-                if db.get_project(pid)?.is_none() {
+            if let Some(pid) = project_id
+                && db.get_project(pid)?.is_none() {
                     return Err(GitCirclesError::DatabasePath(format!(
                         "Project '{}' not found",
                         pid
                     )));
                 }
-            }
 
             // Check/update repository tracking
             let mut repo_record = db
