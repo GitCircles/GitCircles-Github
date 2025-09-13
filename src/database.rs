@@ -1,6 +1,8 @@
 use chrono::Utc;
 
-use crate::types::{BaseBranchChange, MergedPullRequest, Project, ProjectOwner, Repository, Result};
+use crate::types::{
+    BaseBranchChange, MergedPullRequest, Project, ProjectOwner, Repository, Result,
+};
 
 pub struct Database {
     keyspace: fjall::Keyspace,
@@ -27,10 +29,8 @@ impl Database {
             "base_branch_history",
             fjall::PartitionCreateOptions::default(),
         )?;
-        let projects = keyspace.open_partition(
-            "projects",
-            fjall::PartitionCreateOptions::default(),
-        )?;
+        let projects = keyspace
+            .open_partition("projects", fjall::PartitionCreateOptions::default())?;
         let project_owners = keyspace.open_partition(
             "project_owners",
             fjall::PartitionCreateOptions::default(),
@@ -181,7 +181,10 @@ impl Database {
         Ok(())
     }
 
-    pub fn get_project_owners(&self, project_id: &str) -> Result<Vec<ProjectOwner>> {
+    pub fn get_project_owners(
+        &self,
+        project_id: &str,
+    ) -> Result<Vec<ProjectOwner>> {
         let mut owners = Vec::new();
         let prefix = format!("owner:{}:", project_id);
         for item in self.project_owners.prefix(prefix.as_bytes()) {
@@ -192,7 +195,11 @@ impl Database {
         Ok(owners)
     }
 
-    pub fn remove_project_owner(&self, project_id: &str, username: &str) -> Result<()> {
+    pub fn remove_project_owner(
+        &self,
+        project_id: &str,
+        username: &str,
+    ) -> Result<()> {
         let key = format!("owner:{}:{}", project_id, username);
         self.project_owners.remove(&key)?;
         self.keyspace.persist(fjall::PersistMode::SyncAll)?;
@@ -212,7 +219,10 @@ impl Database {
     }
 
     // Repository methods updated for project context
-    pub fn list_repositories_for_project(&self, project_id: &str) -> Result<Vec<Repository>> {
+    pub fn list_repositories_for_project(
+        &self,
+        project_id: &str,
+    ) -> Result<Vec<Repository>> {
         let mut repos = Vec::new();
         for item in self.repositories.prefix("repo:".as_bytes()) {
             let (_, value) = item?;
@@ -224,16 +234,19 @@ impl Database {
         Ok(repos)
     }
 
-    pub fn get_pull_requests_for_project(&self, project_id: &str) -> Result<Vec<MergedPullRequest>> {
+    pub fn get_pull_requests_for_project(
+        &self,
+        project_id: &str,
+    ) -> Result<Vec<MergedPullRequest>> {
         let mut all_prs = Vec::new();
         let repos = self.list_repositories_for_project(project_id)?;
-        
+
         for repo in repos {
             let repo_str = format!("{}/{}", repo.owner, repo.name);
             let mut prs = self.get_pull_requests(&repo_str)?;
             all_prs.append(&mut prs);
         }
-        
+
         // Sort by merged date, most recent first
         all_prs.sort_by(|a, b| b.merged_at.cmp(&a.merged_at));
         Ok(all_prs)

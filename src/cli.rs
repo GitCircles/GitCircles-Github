@@ -180,7 +180,9 @@ pub fn display_repository_status(repos: &[Repository]) {
 pub fn display_projects(projects: &[Project]) {
     if projects.is_empty() {
         println!("No projects found.");
-        println!("Use 'gitcircles-github project create <name>' to create a project.");
+        println!(
+            "Use 'gitcircles-github project create <name>' to create a project."
+        );
         return;
     }
 
@@ -200,7 +202,10 @@ pub fn display_projects(projects: &[Project]) {
         table.add_row(vec![
             project.id.clone(),
             project.name.clone(),
-            project.description.clone().unwrap_or_else(|| "-".to_string()),
+            project
+                .description
+                .clone()
+                .unwrap_or_else(|| "-".to_string()),
             project.created_at.format("%Y-%m-%d").to_string(),
             project.updated_at.format("%Y-%m-%d").to_string(),
         ]);
@@ -210,14 +215,24 @@ pub fn display_projects(projects: &[Project]) {
     println!("Total projects: {}", projects.len());
 }
 
-pub fn display_project_details(project: &Project, owners: &[ProjectOwner], repos: &[Repository]) {
+pub fn display_project_details(
+    project: &Project,
+    owners: &[ProjectOwner],
+    repos: &[Repository],
+) {
     println!("\n📋 Project: {}", project.name);
     println!("ID: {}", project.id);
     if let Some(desc) = &project.description {
         println!("Description: {}", desc);
     }
-    println!("Created: {}", project.created_at.format("%Y-%m-%d %H:%M UTC"));
-    println!("Updated: {}", project.updated_at.format("%Y-%m-%d %H:%M UTC"));
+    println!(
+        "Created: {}",
+        project.created_at.format("%Y-%m-%d %H:%M UTC")
+    );
+    println!(
+        "Updated: {}",
+        project.updated_at.format("%Y-%m-%d %H:%M UTC")
+    );
 
     println!("\n👥 Project Owners ({}):", owners.len());
     if !owners.is_empty() {
@@ -244,6 +259,9 @@ pub fn display_project_details(project: &Project, owners: &[ProjectOwner], repos
         display_repository_status(repos);
     } else {
         println!("  No repositories tracked for this project yet.");
-        println!("  Use 'gitcircles-github collect --repo owner/repo --project-id {}' to add repositories.", project.id);
+        println!(
+            "  Use 'gitcircles-github collect --repo owner/repo --project-id {}' to add repositories.",
+            project.id
+        );
     }
 }

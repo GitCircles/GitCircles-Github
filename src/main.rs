@@ -2,10 +2,16 @@ use chrono::Utc;
 use clap::Parser;
 
 use gitcircles_github::{
-    cli::{Cli, Commands, ProjectCommands, display_pull_requests, display_repository_status, display_projects, display_project_details},
+    cli::{
+        Cli, Commands, ProjectCommands, display_project_details, display_projects,
+        display_pull_requests, display_repository_status,
+    },
     database::Database,
     github::GitHubClient,
-    types::{GitCirclesError, Project, ProjectOwner, Repository, Result, get_database_path, parse_repo, generate_project_id},
+    types::{
+        GitCirclesError, Project, ProjectOwner, Repository, Result,
+        generate_project_id, get_database_path, parse_repo,
+    },
 };
 
 #[tokio::main]
@@ -39,9 +45,10 @@ async fn main() -> Result<()> {
             // Validate project_id if provided
             if let Some(pid) = project_id {
                 if db.get_project(pid)?.is_none() {
-                    return Err(GitCirclesError::DatabasePath(
-                        format!("Project '{}' not found", pid)
-                    ));
+                    return Err(GitCirclesError::DatabasePath(format!(
+                        "Project '{}' not found",
+                        pid
+                    )));
                 }
             }
 
@@ -114,11 +121,15 @@ async fn main() -> Result<()> {
         }
         Commands::Status { project_id } => {
             let db = Database::new(&get_database_path()?)?;
-            
+
             if let Some(pid) = project_id {
                 // Show status for specific project
-                let project = db.get_project(pid)?
-                    .ok_or_else(|| GitCirclesError::DatabasePath(format!("Project '{}' not found", pid)))?;
+                let project = db.get_project(pid)?.ok_or_else(|| {
+                    GitCirclesError::DatabasePath(format!(
+                        "Project '{}' not found",
+                        pid
+                    ))
+                })?;
                 let owners = db.get_project_owners(pid)?;
                 let repos = db.list_repositories_for_project(pid)?;
                 display_project_details(&project, &owners, &repos);
@@ -126,20 +137,24 @@ async fn main() -> Result<()> {
                 // Show overall status
                 let repos = db.list_repositories()?;
                 let projects = db.list_projects()?;
-                
+
                 if !projects.is_empty() {
                     println!("📋 Projects:");
                     display_projects(&projects);
                     println!();
                 }
-                
+
                 if !repos.is_empty() {
                     println!("📦 All Repositories:");
                     display_repository_status(&repos);
                 } else if projects.is_empty() {
                     println!("No repositories or projects being tracked.");
-                    println!("Use 'gitcircles-github collect --repo owner/repo' to start tracking repositories.");
-                    println!("Use 'gitcircles-github project create <name>' to create a project.");
+                    println!(
+                        "Use 'gitcircles-github collect --repo owner/repo' to start tracking repositories."
+                    );
+                    println!(
+                        "Use 'gitcircles-github project create <name>' to create a project."
+                    );
                 }
             }
         }
@@ -151,12 +166,12 @@ async fn main() -> Result<()> {
         }
         Commands::Project(project_cmd) => {
             let db = Database::new(&get_database_path()?)?;
-            
+
             match project_cmd {
                 ProjectCommands::Create { name, description } => {
                     let project_id = generate_project_id(name);
                     let now = Utc::now();
-                    
+
                     let project = Project {
                         id: project_id.clone(),
                         name: name.clone(),
@@ -164,10 +179,13 @@ async fn main() -> Result<()> {
                         created_at: now,
                         updated_at: now,
                     };
-                    
+
                     db.upsert_project(&project)?;
-                    println!("✓ Created project '{}' with ID: {}", name, project_id);
-                    
+                    println!(
+                        "✓ Created project '{}' with ID: {}",
+                        name, project_id
+                    );
+
                     if let Some(desc) = description {
                         println!("  Description: {}", desc);
                     }
@@ -177,62 +195,99 @@ async fn main() -> Result<()> {
                     display_projects(&projects);
                 }
                 ProjectCommands::Show { project_id } => {
-                    let project = db.get_project(project_id)?
-                        .ok_or_else(|| GitCirclesError::DatabasePath(format!("Project '{}' not found", project_id)))?;
+                    let project = db.get_project(project_id)?.ok_or_else(|| {
+                        GitCirclesError::DatabasePath(format!(
+                            "Project '{}' not found",
+                            project_id
+                        ))
+                    })?;
                     let owners = db.get_project_owners(project_id)?;
                     let repos = db.list_repositories_for_project(project_id)?;
                     display_project_details(&project, &owners, &repos);
                 }
                 ProjectCommands::Delete { project_id } => {
                     // Check if project exists
-                    let project = db.get_project(project_id)?
-                        .ok_or_else(|| GitCirclesError::DatabasePath(format!("Project '{}' not found", project_id)))?;
-                    
+                    let project = db.get_project(project_id)?.ok_or_else(|| {
+                        GitCirclesError::DatabasePath(format!(
+                            "Project '{}' not found",
+                            project_id
+                        ))
+                    })?;
+
                     // Check for linked repositories
                     let repos = db.list_repositories_for_project(project_id)?;
                     if !repos.is_empty() {
-                        return Err(GitCirclesError::DatabasePath(
-                            format!("Cannot delete project '{}': {} repositories are still linked. Remove repositories first.", project_id, repos.len())
-                        ));
+                        return Err(GitCirclesError::DatabasePath(format!(
+                            "Cannot delete project '{}': {} repositories are still linked. Remove repositories first.",
+                            project_id,
+                            repos.len()
+                        )));
                     }
-                    
+
                     // Remove all project owners first
                     let owners = db.get_project_owners(project_id)?;
                     for owner in &owners {
-                        db.remove_project_owner(project_id, &owner.github_username)?;
+                        db.remove_project_owner(
+                            project_id,
+                            &owner.github_username,
+                        )?;
                     }
-                    
+
                     // Delete the project
                     db.delete_project(project_id)?;
-                    println!("✓ Deleted project '{}' ({})", project.name, project_id);
+                    println!(
+                        "✓ Deleted project '{}' ({})",
+                        project.name, project_id
+                    );
                 }
-                ProjectCommands::AddOwner { project_id, username, role } => {
+                ProjectCommands::AddOwner {
+                    project_id,
+                    username,
+                    role,
+                } => {
                     // Validate project exists
-                    let _project = db.get_project(project_id)?
-                        .ok_or_else(|| GitCirclesError::DatabasePath(format!("Project '{}' not found", project_id)))?;
-                    
+                    let _project =
+                        db.get_project(project_id)?.ok_or_else(|| {
+                            GitCirclesError::DatabasePath(format!(
+                                "Project '{}' not found",
+                                project_id
+                            ))
+                        })?;
+
                     // Validate role
                     if !["owner", "admin", "member"].contains(&role.as_str()) {
                         return Err(GitCirclesError::DatabasePath(
-                            "Invalid role. Must be one of: owner, admin, member".to_string()
+                            "Invalid role. Must be one of: owner, admin, member"
+                                .to_string(),
                         ));
                     }
-                    
+
                     let project_owner = ProjectOwner {
                         project_id: project_id.clone(),
                         github_username: username.clone(),
                         role: role.clone(),
                         added_at: Utc::now(),
                     };
-                    
+
                     db.add_project_owner(&project_owner)?;
-                    println!("✓ Added {} as {} to project {}", username, role, project_id);
+                    println!(
+                        "✓ Added {} as {} to project {}",
+                        username, role, project_id
+                    );
                 }
-                ProjectCommands::RemoveOwner { project_id, username } => {
+                ProjectCommands::RemoveOwner {
+                    project_id,
+                    username,
+                } => {
                     // Validate project exists
-                    let _project = db.get_project(project_id)?
-                        .ok_or_else(|| GitCirclesError::DatabasePath(format!("Project '{}' not found", project_id)))?;
-                    
+                    let _project =
+                        db.get_project(project_id)?.ok_or_else(|| {
+                            GitCirclesError::DatabasePath(format!(
+                                "Project '{}' not found",
+                                project_id
+                            ))
+                        })?;
+
                     db.remove_project_owner(project_id, username)?;
                     println!("✓ Removed {} from project {}", username, project_id);
                 }
