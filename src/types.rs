@@ -29,6 +29,23 @@ pub enum GitCirclesError {
 pub type Result<T> = std::result::Result<T, GitCirclesError>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Project {
+    pub id: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProjectOwner {
+    pub project_id: String,
+    pub github_username: String,
+    pub role: String, // "owner", "admin", "member"
+    pub added_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Repository {
     pub owner: String,
     pub name: String,
@@ -36,6 +53,7 @@ pub struct Repository {
     pub last_sync: Option<DateTime<Utc>>,
     pub total_prs: u64,
     pub first_sync: DateTime<Utc>,
+    pub project_id: Option<String>, // Link to project
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -63,6 +81,18 @@ pub fn parse_repo(repo_str: &str) -> Result<(String, String)> {
         return Err(GitCirclesError::InvalidRepo(repo_str.to_string()));
     }
     Ok((parts[0].to_string(), parts[1].to_string()))
+}
+
+pub fn generate_project_id(name: &str) -> String {
+    let timestamp = Utc::now().timestamp();
+    let name_slug = name
+        .to_lowercase()
+        .chars()
+        .map(|c| if c.is_alphanumeric() { c } else { '-' })
+        .collect::<String>()
+        .trim_matches('-')
+        .to_string();
+    format!("{}_{}", name_slug, timestamp)
 }
 
 pub fn get_database_path() -> Result<String> {
