@@ -1,5 +1,9 @@
 use chrono::{DateTime, Utc};
+use once_cell::sync::Lazy;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::fmt;
+use std::ops::Deref;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -24,9 +28,109 @@ pub enum GitCirclesError {
 
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
+
+    #[error("Wallet not found for {0}")]
+    WalletNotFound(String),
+
+    #[error("Invalid wallet address '{0}': {1}")]
+    WalletInvalidFormat(String, String),
 }
 
 pub type Result<T> = std::result::Result<T, GitCirclesError>;
+
+pub static WALLET_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"^9[1-9A-HJ-NP-Za-km-z]{50,}$").expect("wallet regex must compile")
+});
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct WalletAddress(String);
+
+impl WalletAddress {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl fmt::Display for WalletAddress {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl Deref for WalletAddress {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        self.as_str()
+    }
+}
+
+impl TryFrom<&str> for WalletAddress {
+    type Error = GitCirclesError;
+
+    fn try_from(raw: &str) -> Result<Self> {
+        let trimmed = raw.trim();
+        if WALLET_REGEX.is_match(trimmed) {
+            Ok(Self(trimmed.to_string()))
+        } else {
+            Err(GitCirclesError::WalletInvalidFormat(
+                trimmed.to_string(),
+                "expected Ergo P2PK".into(),
+            ))
+        }
+    }
+}
+
+impl TryFrom<String> for WalletAddress {
+    type Error = GitCirclesError;
+
+    fn try_from(raw: String) -> Result<Self> {
+        WalletAddress::try_from(raw.as_str())
+    }
+}
+
+impl From<WalletAddress> for String {
+    fn from(value: WalletAddress) -> Self {
+        value.0
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum WalletSource {
+    GitHubProfileRepo {
+        login: String,
+        branch: String,
+        commit: String,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserWallet {
+    pub login: String,
+    pub platform: String,
+    pub address: WalletAddress,
+    pub source: WalletSource,
+    pub synced_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WalletHistoryEntry {
+    pub login: String,
+    pub platform: String,
+    pub address: WalletAddress,
+    pub source: WalletSource,
+    pub recorded_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WalletLoginLink {
+    pub wallet: WalletAddress,
+    pub platform: String,
+    pub login: String,
+    pub linked_at: DateTime<Utc>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Repository {
