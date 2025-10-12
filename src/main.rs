@@ -2,10 +2,18 @@ use chrono::Utc;
 use clap::Parser;
 
 use gitcircles_github::{
-    cli::{Cli, Commands, display_pull_requests, display_repository_status},
+    cli::{
+        Cli, Commands, WalletCommands, display_pull_requests,
+        display_repository_status, display_user_wallet, display_wallet_history,
+        display_wallet_logins,
+    },
     database::Database,
     github::GitHubClient,
-    types::{GitCirclesError, Repository, Result, get_database_path, parse_repo},
+    types::{
+        GitCirclesError, Repository, Result, WalletAddress, get_database_path,
+        parse_repo,
+    },
+    wallet::WalletService,
 };
 
 #[tokio::main]
@@ -106,6 +114,90 @@ async fn main() -> Result<()> {
             let db_path = get_database_path()?;
             let _db = Database::new(&db_path)?;
             println!("✓ Database initialized at: {}", db_path);
+        }
+        Commands::TestToken { token } => {
+            let github_token = token.clone()
+                .or_else(|| std::env::var("GITHUB_TOKEN").ok())
+                .ok_or_else(|| GitCirclesError::Auth("GitHub token required. Use --token or set GITHUB_TOKEN environment variable".to_string()))?;
+
+            println!("Testing GitHub token authentication...");
+            let github_client = GitHubClient::new(&github_token)?;
+
+            match github_client.test_token().await {
+                Ok(username) => {
+                    println!("✓ Token is valid!");
+                    println!("✓ Authenticated as: {}", username);
+                }
+                Err(e) => {
+                    eprintln!("✗ Token authentication failed!");
+                    eprintln!("Error: {}", e);
+                    eprintln!("\nTroubleshooting:");
+                    eprintln!(
+                        "1. Make sure your token starts with 'ghp_' or 'github_pat_'"
+                    );
+                    eprintln!(
+                        "2. Generate a new token at: https://github.com/settings/tokens"
+                    );
+                    eprintln!("3. Required scopes: 'repo' or 'public_repo'");
+                    return Err(e);
+                }
+            }
+        }
+        Commands::Wallet(wallet_cmd) => {
+            let db = Database::new(&get_database_path()?)?;
+
+            match wallet_cmd {
+                WalletCommands::Sync { login, token } => {
+                    // Get token from arg or environment
+                    let github_token = token.clone()
+                        .or_else(|| std::env::var("GITHUB_TOKEN").ok())
+                        .ok_or_else(|| GitCirclesError::Auth("GitHub token required. Use --token or set GITHUB_TOKEN environment variable".to_string()))?;
+
+                    let github_client = GitHubClient::new(&github_token)?;
+
+                    println!("Syncing wallet for GitHub user: {}", login);
+
+                    let wallet_service = WalletService::new(&db, &github_client);
+                    match wallet_service.sync_github_login(login).await? {
+                        Some(result) => {
+                            if result.changed {
+                                if let Some(prev) = result.previous {
+                                    println!(
+                                        "✓ Wallet updated from {} to {}",
+                                        prev, result.current
+                                    );
+                                } else {
+                                    println!("✓ Wallet added: {}", result.current);
+                                }
+                            } else {
+                                println!("✓ Wallet unchanged: {}", result.current);
+                            }
+                        }
+                        None => println!("No wallet found for user '{}'", login),
+                    }
+                }
+                WalletCommands::Show { login } => {
+                    match db.get_user_wallet("github", login)? {
+                        Some(wallet) => display_user_wallet(&wallet),
+                        None => {
+                            eprintln!("Error: No wallet found for user '{}'", login)
+                        }
+                    }
+                }
+                WalletCommands::History { login } => {
+                    let history = db.get_wallet_history("github", login)?;
+                    display_wallet_history(&history);
+                }
+                WalletCommands::Lookup { wallet } => {
+                    let wallet_addr = WalletAddress::try_from(wallet.as_str())?;
+                    let links = db.get_logins_for_wallet(&wallet_addr, "github")?;
+                    let tuples: Vec<(String, String)> = links
+                        .iter()
+                        .map(|l| (l.platform.clone(), l.login.clone()))
+                        .collect();
+                    display_wallet_logins(&tuples);
+                }
+            }
         }
     }
 

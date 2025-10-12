@@ -34,6 +34,16 @@ pub enum GitCirclesError {
 
     #[error("Invalid wallet address '{0}': {1}")]
     WalletInvalidFormat(String, String),
+
+    #[error(
+        "Repository {0} is not accessible. Profile repositories must be public."
+    )]
+    RepoNotAccessible(String),
+
+    #[error(
+        "Repository {0} exists but appears to be empty. Please create at least one commit with P2PK.pub file."
+    )]
+    RepoEmpty(String),
 }
 
 pub type Result<T> = std::result::Result<T, GitCirclesError>;
@@ -99,11 +109,21 @@ impl From<WalletAddress> for String {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum WalletSource {
-    GitHubProfileRepo {
-        login: String,
-        branch: String,
-        commit: String,
-    },
+    GitHubProfileRepo { login: String, branch: String },
+}
+
+#[derive(Debug, Clone)]
+pub struct WalletFetchOutcome {
+    pub address: WalletAddress,
+    pub branch: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct WalletSyncResult {
+    pub current: WalletAddress,
+    pub previous: Option<WalletAddress>,
+    pub changed: bool,
+    pub source: WalletSource,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -186,4 +206,70 @@ pub fn get_database_path() -> Result<String> {
         ))
     })?;
     Ok(format!("{}/db", db_dir))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn mk_valid(len: usize) -> String {
+        // Build a valid Base58-ish string starting with '9'
+        let mut s = String::from("9");
+        // Allowed characters include 'A'; fill to requested length
+        s.push_str(&"A".repeat(len - 1));
+        s
+    }
+
+    #[test]
+    fn valid_wallet_min_length() {
+        let s = mk_valid(51);
+        let addr = WalletAddress::try_from(s.as_str()).expect("should be valid");
+        assert_eq!(addr.as_str(), s);
+    }
+
+    #[test]
+    fn trims_whitespace() {
+        let inner = mk_valid(60);
+        let raw = format!("  {}\n", inner);
+        let addr = WalletAddress::try_from(raw.as_str()).expect("should be valid");
+        assert_eq!(addr.as_str(), inner);
+    }
+
+    #[test]
+    fn invalid_prefix() {
+        let mut s = mk_valid(51);
+        s.replace_range(0..1, "8");
+        let err = WalletAddress::try_from(s.as_str()).unwrap_err();
+        match err {
+            GitCirclesError::WalletInvalidFormat(_, _) => {}
+            _ => panic!("unexpected error variant"),
+        }
+    }
+
+    #[test]
+    fn invalid_too_short() {
+        let s = mk_valid(45);
+        let err = WalletAddress::try_from(s.as_str()).unwrap_err();
+        match err {
+            GitCirclesError::WalletInvalidFormat(_, _) => {}
+            _ => panic!("unexpected error variant"),
+        }
+    }
+
+    #[test]
+    fn invalid_chars() {
+        let s = format!("9{}", "*".repeat(60));
+        let err = WalletAddress::try_from(s.as_str()).unwrap_err();
+        match err {
+            GitCirclesError::WalletInvalidFormat(_, _) => {}
+            _ => panic!("unexpected error variant"),
+        }
+    }
+
+    #[test]
+    fn try_from_string() {
+        let s = mk_valid(55);
+        let addr = WalletAddress::try_from(s.clone()).expect("valid");
+        assert_eq!(String::from(addr), s);
+    }
 }
