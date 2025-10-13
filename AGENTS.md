@@ -66,34 +66,51 @@ All required dependencies are implemented:
 - ✅ `comfy-table`: Formatted table output
 - ✅ `indicatif`: Progress bars and spinners
 
-# Current Task: Issue #7 - Wallet Address Fetching
+# Current Status
 
-## Status: ✅ 100% Complete
+## Recently Completed
 
-### What's Working ✅
-- ✅ All types, validation, and data models (`src/types.rs`)
-- ✅ Database layer with 3 wallet partitions (`src/database.rs`)
-  - `user_wallets`: login:{platform}:{login} → UserWallet
-  - `user_wallet_history`: history:{platform}:{login}:{timestamp} → WalletHistoryEntry
-  - `wallet_index`: wallet:{address}:{platform}:{login} → WalletLoginLink
-- ✅ GitHub API wallet fetching with branch fallback (`src/github.rs:131-227`)
-  - Fetches from `<login>/gitcircles-payment-address` repository
-  - Tries `main`, `master`, and default branch
-  - Validates Ergo P2PK address format (starts with `9`, 51 chars)
-- ✅ Wallet service with change detection (`src/wallet.rs:20-87`)
-- ✅ CLI command definitions and display functions (`src/cli.rs`)
-- ✅ All 4 wallet commands integrated in `src/main.rs`:
-  - `wallet sync <login>` - Fetch and sync wallet address
-  - `wallet show <login>` - Display current wallet info
-  - `wallet history <login>` - Show wallet change history
-  - `wallet lookup <address>` - Find logins for a wallet address
-- ✅ `test-token` command for debugging authentication (`src/main.rs:115-138`)
-- ✅ All tests passing: 16/16 (100%)
+### ✅ Issue #7 - Wallet Address Fetching (MERGED)
+- All types, validation, and data models
+- Database layer with 3 wallet partitions (user_wallets, user_wallet_history, wallet_index)
+- GitHub API wallet fetching with branch fallback
+- Wallet service with change detection
+- 4 wallet commands: sync, show, history, lookup
+- Test-token command for debugging authentication
 
-### Fixes Applied
-- ✅ Fixed test timing issue by adding 1-second delay between syncs
-- ✅ Updated repository name from `gitcircles-profile` to `gitcircles-payment-address`
-- ✅ Removed unreliable `repo.size == 0` check that was blocking valid repos
+### ✅ PR #6 - Project/ProjectOwner Persistence (MERGED)
+- Project management infrastructure
+- Database layer with 2 project partitions (projects, project_owners)
+- 6 project commands: create, list, show, delete, add-owner, remove-owner
+- Project-scoped repository tracking
+
+### Merge Status
+- Successfully merged upstream/main (PR #6) into issue-7-clean branch
+- All conflicts resolved in: src/cli.rs, src/database.rs, src/main.rs, src/types.rs
+- All 16 tests passing (100%)
+- Build successful
+
+## Available Commands
+
+### Core Commands
+- `init` - Initialize local database
+- `collect --repo <owner/repo> [--base-branch main] [--days N] [--project-id ID]` - Collect merged PRs
+- `status [--project-id ID]` - Show status of tracked repositories and projects
+- `test-token [--token TOKEN]` - Test GitHub token authentication
+
+### Project Management
+- `project create <name> [--description TEXT]` - Create a new project
+- `project list` - List all projects
+- `project show <project-id>` - Show detailed project information
+- `project delete <project-id>` - Delete a project
+- `project add-owner <project-id> <username> [--role ROLE]` - Add project owner (roles: owner, admin, member)
+- `project remove-owner <project-id> <username>` - Remove project owner
+
+### Wallet Management
+- `wallet sync <login> [--token TOKEN]` - Fetch and sync wallet address from GitHub
+- `wallet show <login>` - Display current wallet info for a user
+- `wallet history <login>` - Show wallet change history
+- `wallet lookup <address>` - Find all logins associated with a wallet address
 
 ### Usage Examples
 
@@ -102,25 +119,23 @@ All required dependencies are implemented:
 export GITHUB_TOKEN=ghp_your_token_here
 cargo run -- test-token
 
+# Create a project and collect PRs
+cargo run -- project create "My Project" --description "Description here"
+cargo run -- collect --repo owner/repo --project-id my-project_12345
+
 # Sync wallet for a GitHub user
 cargo run -- wallet sync <github-login>
 
-# Show current wallet
-cargo run -- wallet show <github-login>
-
-# View wallet history
-cargo run -- wallet history <github-login>
-
-# Reverse lookup: find logins for a wallet
-cargo run -- wallet lookup <wallet-address>
+# Show project status
+cargo run -- status --project-id my-project_12345
 
 # Run all tests
 cargo test
 ```
 
-### Requirements for Users
+### Wallet Address Requirements
 
-To use this feature, users must:
+To use wallet features, users must:
 1. Create a public repository named `gitcircles-payment-address`
 2. Add a file named `P2PK.pub` containing their Ergo wallet address
 3. The address must be in P2PK format (starting with `9`, 51 characters)
@@ -170,6 +185,13 @@ GET /repos/{owner}/{repo}/pulls?state=closed&base={branch}&per_page=100&page={n}
 - ✅ `project_owners` - Many-to-many relationship between projects and owners
 - ✅ Updated `repositories` to link to projects
 - ✅ Project-scoped PR aggregation with `get_pull_requests_for_project()`
+
+**Wallet Address Tracking (Complete):**
+- ✅ `user_wallets` - Current wallet address per platform/login
+- ✅ `user_wallet_history` - Complete audit trail of wallet changes
+- ✅ `wallet_index` - Reverse lookup from wallet address to logins
+- ✅ Atomic batch operations for wallet updates
+- ✅ Change detection to avoid unnecessary writes
 
 ### 3. CLI Commands Implementation ✅
 
@@ -281,52 +303,38 @@ Relationships:
 - `wallet_index` enables reverse lookup from wallet address to all associated logins
 ```
 
-## Issue #7: Fetch User Wallet Address and Establish the Match Between GitHub Login and Wallet Address ✅ COMPLETE
+## Feature Summary
 
-### Implementation Summary
+### Issue #7: Wallet Address Tracking ✅ MERGED
 
-**Status**: Fully implemented and tested (16/16 tests passing)
-
-The feature fetches Ergo wallet addresses from user repositories and maintains a bidirectional
+Fetches Ergo wallet addresses from user GitHub repositories and maintains bidirectional
 mapping between GitHub logins and wallet addresses with full history tracking.
 
-### Key Features Implemented
+**Implementation:**
+- Wallet fetching from `<login>/gitcircles-payment-address` repository (`src/github.rs`)
+- Database partitions: user_wallets, user_wallet_history, wallet_index (`src/database.rs`)
+- Wallet service with atomic batch writes and change detection (`src/wallet.rs`)
+- CLI commands: sync, show, history, lookup (`src/main.rs`)
+- Test-token command for authentication debugging
 
-1. **Wallet Fetching** (`src/github.rs:131-227`)
-   - Fetches `P2PK.pub` from `<login>/gitcircles-payment-address` repository
-   - Branch priority: `main` → `master` → repo default branch
-   - Validates Ergo P2PK address format (must start with `9`, exactly 51 characters)
-   - Handles missing repos gracefully (returns `None` instead of error)
-
-2. **Database Schema** (`src/database.rs`)
-   - `user_wallets`: Current wallet per user (key: `login:{platform}:{login}`)
-   - `user_wallet_history`: Complete history of wallet changes (key: `history:{platform}:{login}:{timestamp}`)
-   - `wallet_index`: Reverse lookup from wallet to all associated logins (key: `wallet:{address}:{platform}:{login}`)
-
-3. **Wallet Service** (`src/wallet.rs`)
-   - Atomic updates using batch writes
-   - Change detection (only writes if wallet address changed)
-   - History tracking for audit trail
-   - Bidirectional index maintenance
-
-4. **CLI Commands** (`src/main.rs`)
-   - `wallet sync <login>` - Fetch and store wallet address
-   - `wallet show <login>` - Display current wallet
-   - `wallet history <login>` - Show all historical addresses
-   - `wallet lookup <address>` - Find all logins using an address
-   - `test-token` - Verify GitHub token authentication
-
-### User Requirements
-
-Users must create a public repository named `gitcircles-payment-address` containing:
-- File: `P2PK.pub`
-- Content: Ergo P2PK wallet address (format: `9` + 50 base58 characters)
-- Example: `9hQb8QxZ4gsgAWtGvqh3HPpYCexEQhVsWM4QBQ3AFhSVERPfoM5`
-
-### Design Notes
-
+**Design:**
 - Wallet addresses serve as internal user identifiers across platforms
 - Address changes indicate potential account ownership transfer
-- Multiple logins can share the same wallet address (supported by design)
-- History is preserved permanently for audit purposes
+- Multiple logins can share the same wallet address (supported)
+- History preserved permanently for audit purposes
+
+### PR #6: Project Management ✅ MERGED
+
+Multi-project support with project ownership and repository grouping.
+
+**Implementation:**
+- Database partitions: projects, project_owners (`src/database.rs`)
+- CLI commands: create, list, show, delete, add-owner, remove-owner (`src/main.rs`)
+- Project-scoped repository tracking and PR aggregation
+- Role-based ownership: owner, admin, member
+
+**Design:**
+- Projects can have multiple owners with different roles
+- Repositories can be associated with projects
+- Project deletion requires all repositories to be unlinked first (safety check)
 
