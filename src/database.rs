@@ -1,8 +1,8 @@
 use chrono::Utc;
 
 use crate::types::{
-    BaseBranchChange, MergedPullRequest, Project, ProjectOwner, Repository, Result, UserWallet,
-    WalletAddress, WalletHistoryEntry, WalletLoginLink,
+    BaseBranchChange, MergedPullRequest, Project, ProjectOwner, Repository, Result,
+    UserWallet, WalletAddress, WalletHistoryEntry, WalletLoginLink,
 };
 
 pub struct Database {

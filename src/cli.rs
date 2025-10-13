@@ -2,7 +2,10 @@ use clap::{Parser, Subcommand};
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::{ContentArrangement, Table};
 
-use crate::types::{MergedPullRequest, Project, ProjectOwner, Repository, UserWallet, WalletHistoryEntry};
+use crate::types::{
+    MergedPullRequest, Project, ProjectOwner, Repository, UserWallet,
+    WalletHistoryEntry,
+};
 
 #[derive(Parser)]
 #[command(name = "gitcircles-github")]

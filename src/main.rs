@@ -3,9 +3,9 @@ use clap::Parser;
 
 use gitcircles_github::{
     cli::{
-        Cli, Commands, ProjectCommands, WalletCommands, display_project_details, display_projects,
-        display_pull_requests, display_repository_status, display_user_wallet, display_wallet_history,
-        display_wallet_logins,
+        Cli, Commands, ProjectCommands, WalletCommands, display_project_details,
+        display_projects, display_pull_requests, display_repository_status,
+        display_user_wallet, display_wallet_history, display_wallet_logins,
     },
     database::Database,
     github::GitHubClient,
@@ -46,12 +46,13 @@ async fn main() -> Result<()> {
 
             // Validate project_id if provided
             if let Some(pid) = project_id
-                && db.get_project(pid)?.is_none() {
-                    return Err(GitCirclesError::DatabasePath(format!(
-                        "Project '{}' not found",
-                        pid
-                    )));
-                }
+                && db.get_project(pid)?.is_none()
+            {
+                return Err(GitCirclesError::DatabasePath(format!(
+                    "Project '{}' not found",
+                    pid
+                )));
+            }
 
             // Check/update repository tracking
             let mut repo_record = db
