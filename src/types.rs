@@ -200,11 +200,11 @@ pub struct BaseBranchChange {
 }
 
 pub fn parse_repo(repo_str: &str) -> Result<(String, String)> {
-    let parts: Vec<&str> = repo_str.split('/').collect();
-    if parts.len() != 2 || parts[0].is_empty() || parts[1].is_empty() {
-        return Err(GitCirclesError::InvalidRepo(repo_str.to_string()));
-    }
-    Ok((parts[0].to_string(), parts[1].to_string()))
+    let (owner, repo) = repo_str
+        .split_once('/')
+        .ok_or_else(|| GitCirclesError::InvalidRepo(repo_str.to_string()))?;
+
+    Ok((owner.to_string(), repo.to_string()))
 }
 
 pub fn generate_project_id(name: &str) -> String {
@@ -301,5 +301,14 @@ mod tests {
         let s = mk_valid(55);
         let addr = WalletAddress::try_from(s.clone()).expect("valid");
         assert_eq!(String::from(addr), s);
+    }
+
+    #[test]
+    fn try_parse_repo() {
+        let valid_repo = "owner/repo";
+        let invalid_no_slash = "ownerrepo";
+
+        assert!(parse_repo(valid_repo).is_ok());
+        assert!(parse_repo(invalid_no_slash).is_err());
     }
 }
