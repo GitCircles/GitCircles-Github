@@ -2,6 +2,7 @@
 # will have compiled files and executables
 debug/
 target/
+specs/
 tmp/
 
 # Remove Cargo.lock from gitignore if creating an executable, leave it for libraries
@@ -26,11 +27,7 @@ dhat-heap.json
 # misc
 .amc.toml
 .tmuxp.yaml
-git_circles.txt
 .DS_Store
-AGENTS.md
-CLAUDE.md
-
 
 # Added by cargo
 
