@@ -14,12 +14,11 @@ pub struct GitHubClient {
 
 // Trait to allow testing Wallet fetch logic without real network
 // Implemented by GitHubClient; tests can provide a mock implementation.
-#[async_trait::async_trait]
 pub trait WalletFetcher: Send + Sync {
-    async fn fetch_wallet_address(
+    fn fetch_wallet_address(
         &self,
         login: &str,
-    ) -> Result<Option<WalletFetchOutcome>>;
+    ) -> impl std::future::Future<Output = Result<Option<WalletFetchOutcome>>> + Send;
 }
 
 impl GitHubClient {
@@ -220,7 +219,6 @@ impl GitHubClient {
     }
 }
 
-#[async_trait::async_trait]
 impl WalletFetcher for GitHubClient {
     async fn fetch_wallet_address(
         &self,

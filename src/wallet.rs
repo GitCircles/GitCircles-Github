@@ -100,7 +100,6 @@ mod tests {
         outcomes: Mutex<VecDeque<Option<WalletFetchOutcome>>>,
     }
 
-    #[async_trait::async_trait]
     impl WalletFetcher for MockFetcher {
         async fn fetch_wallet_address(
             &self,
