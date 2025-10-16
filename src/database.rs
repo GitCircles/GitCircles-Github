@@ -79,8 +79,9 @@ impl Database {
         name: &str,
     ) -> Result<Option<Repository>> {
         let key = format!("repo:{}/{}", owner, name);
-        if let Some(value) = self.repositories.get(&key)? {
-            let repo: Repository = serde_json::from_slice(&value)?;
+        if let Some(value) = self.repositories.get(&key)?
+            && let Ok(repo) = serde_json::from_slice(&value)
+        {
             Ok(Some(repo))
         } else {
             Ok(None)
@@ -88,13 +89,14 @@ impl Database {
     }
 
     pub fn list_repositories(&self) -> Result<Vec<Repository>> {
-        let mut repos = Vec::new();
-        for item in self.repositories.prefix("repo:".as_bytes()) {
-            let (_, value) = item?;
-            let repo: Repository = serde_json::from_slice(&value)?;
-            repos.push(repo);
-        }
-        Ok(repos)
+        self.repositories
+            .prefix("repo:".as_bytes())
+            .map(|item| {
+                let (_, value) = item?;
+                let repo: Repository = serde_json::from_slice(&value)?;
+                Ok(repo)
+            })
+            .collect()
     }
 
     pub fn upsert_pull_request(&self, pr: &MergedPullRequest) -> Result<()> {
@@ -106,14 +108,15 @@ impl Database {
     }
 
     pub fn get_pull_requests(&self, repo: &str) -> Result<Vec<MergedPullRequest>> {
-        let mut prs = Vec::new();
         let prefix = format!("pr:{}:", repo);
-        for item in self.pull_requests.prefix(prefix.as_bytes()) {
-            let (_, value) = item?;
-            let pr: MergedPullRequest = serde_json::from_slice(&value)?;
-            prs.push(pr);
-        }
-        Ok(prs)
+        self.pull_requests
+            .prefix(prefix.as_bytes())
+            .map(|item| {
+                let (_, value) = item?;
+                let pr: MergedPullRequest = serde_json::from_slice(&value)?;
+                Ok(pr)
+            })
+            .collect()
     }
 
     pub fn pull_request_exists(&self, repo: &str, number: u64) -> Result<bool> {
@@ -145,14 +148,15 @@ impl Database {
         &self,
         repo: &str,
     ) -> Result<Vec<BaseBranchChange>> {
-        let mut changes = Vec::new();
         let prefix = format!("base:{}:", repo);
-        for item in self.base_branch_history.prefix(prefix.as_bytes()) {
-            let (_, value) = item?;
-            let change: BaseBranchChange = serde_json::from_slice(&value)?;
-            changes.push(change);
-        }
-        Ok(changes)
+        self.base_branch_history
+            .prefix(prefix.as_bytes())
+            .map(|item| {
+                let (_, value) = item?;
+                let change: BaseBranchChange = serde_json::from_slice(&value)?;
+                Ok(change)
+            })
+            .collect()
     }
 
     // Wallet methods
@@ -170,8 +174,9 @@ impl Database {
         login: &str,
     ) -> Result<Option<UserWallet>> {
         let key = format!("login:{}:{}", platform, login);
-        if let Some(value) = self.user_wallets.get(&key)? {
-            let wallet: UserWallet = serde_json::from_slice(&value)?;
+        if let Some(value) = self.user_wallets.get(&key)?
+            && let Ok(wallet) = serde_json::from_slice(&value)
+        {
             Ok(Some(wallet))
         } else {
             Ok(None)
@@ -196,14 +201,15 @@ impl Database {
         platform: &str,
         login: &str,
     ) -> Result<Vec<WalletHistoryEntry>> {
-        let mut entries = Vec::new();
         let prefix = format!("history:{}:{}:", platform, login);
-        for item in self.user_wallet_history.prefix(prefix.as_bytes()) {
-            let (_, value) = item?;
-            let entry: WalletHistoryEntry = serde_json::from_slice(&value)?;
-            entries.push(entry);
-        }
-        Ok(entries)
+        self.user_wallet_history
+            .prefix(prefix.as_bytes())
+            .map(|item| {
+                let (_, value) = item?;
+                let entry: WalletHistoryEntry = serde_json::from_slice(&value)?;
+                Ok(entry)
+            })
+            .collect()
     }
 
     pub fn get_logins_for_wallet(
@@ -211,14 +217,15 @@ impl Database {
         address: &WalletAddress,
         platform: &str,
     ) -> Result<Vec<WalletLoginLink>> {
-        let mut links = Vec::new();
         let prefix = format!("wallet:{}:{}:", address, platform);
-        for item in self.wallet_index.prefix(prefix.as_bytes()) {
-            let (_, value) = item?;
-            let link: WalletLoginLink = serde_json::from_slice(&value)?;
-            links.push(link);
-        }
-        Ok(links)
+        self.wallet_index
+            .prefix(prefix.as_bytes())
+            .map(|item| {
+                let (_, value) = item?;
+                let link: WalletLoginLink = serde_json::from_slice(&value)?;
+                Ok(link)
+            })
+            .collect()
     }
 
     pub fn replace_wallet_link(&self, link: &WalletLoginLink) -> Result<()> {
@@ -281,8 +288,9 @@ impl Database {
 
     pub fn get_project(&self, project_id: &str) -> Result<Option<Project>> {
         let key = format!("project:{}", project_id);
-        if let Some(value) = self.projects.get(&key)? {
-            let project: Project = serde_json::from_slice(&value)?;
+        if let Some(value) = self.projects.get(&key)?
+            && let Ok(project) = serde_json::from_slice(&value)
+        {
             Ok(Some(project))
         } else {
             Ok(None)
@@ -290,13 +298,14 @@ impl Database {
     }
 
     pub fn list_projects(&self) -> Result<Vec<Project>> {
-        let mut projects = Vec::new();
-        for item in self.projects.prefix("project:".as_bytes()) {
-            let (_, value) = item?;
-            let project: Project = serde_json::from_slice(&value)?;
-            projects.push(project);
-        }
-        Ok(projects)
+        self.projects
+            .prefix("project:".as_bytes())
+            .map(|item| {
+                let (_, value) = item?;
+                let project: Project = serde_json::from_slice(&value)?;
+                Ok(project)
+            })
+            .collect()
     }
 
     pub fn delete_project(&self, project_id: &str) -> Result<()> {
@@ -319,14 +328,15 @@ impl Database {
         &self,
         project_id: &str,
     ) -> Result<Vec<ProjectOwner>> {
-        let mut owners = Vec::new();
         let prefix = format!("owner:{}:", project_id);
-        for item in self.project_owners.prefix(prefix.as_bytes()) {
-            let (_, value) = item?;
-            let owner: ProjectOwner = serde_json::from_slice(&value)?;
-            owners.push(owner);
-        }
-        Ok(owners)
+        self.project_owners
+            .prefix(prefix.as_bytes())
+            .map(|item| {
+                let (_, value) = item?;
+                let owner: ProjectOwner = serde_json::from_slice(&value)?;
+                Ok(owner)
+            })
+            .collect()
     }
 
     pub fn remove_project_owner(
@@ -341,15 +351,21 @@ impl Database {
     }
 
     pub fn get_projects_for_owner(&self, username: &str) -> Result<Vec<String>> {
-        let mut project_ids = Vec::new();
-        for item in self.project_owners.iter() {
-            let (_key, value) = item?;
-            let owner: ProjectOwner = serde_json::from_slice(&value)?;
-            if owner.github_username == username {
-                project_ids.push(owner.project_id);
-            }
-        }
-        Ok(project_ids)
+        self.project_owners
+            .iter()
+            .map(|item| {
+                let (_, value) = item?;
+                let owner: ProjectOwner = serde_json::from_slice(&value)?;
+                Ok(owner)
+            })
+            .filter_map(|result| match result {
+                Ok(owner) if owner.github_username == username => {
+                    Some(Ok(owner.project_id))
+                }
+                Ok(_) => None,
+                Err(e) => Some(Err(e)),
+            })
+            .collect()
     }
 
     // Repository methods updated for project context
@@ -357,31 +373,34 @@ impl Database {
         &self,
         project_id: &str,
     ) -> Result<Vec<Repository>> {
-        let mut repos = Vec::new();
-        for item in self.repositories.prefix("repo:".as_bytes()) {
-            let (_, value) = item?;
-            let repo: Repository = serde_json::from_slice(&value)?;
-            if repo.project_id.as_deref() == Some(project_id) {
-                repos.push(repo);
-            }
-        }
-        Ok(repos)
+        self.repositories
+            .prefix("repo:".as_bytes())
+            .map(|item| {
+                let (_, value) = item?;
+                let repo: Repository = serde_json::from_slice(&value)?;
+                if repo.project_id.as_deref() != Some(project_id) {
+                    return Ok(None);
+                }
+                Ok(Some(repo))
+            })
+            .filter_map(Result::transpose)
+            .collect()
     }
 
     pub fn get_pull_requests_for_project(
         &self,
         project_id: &str,
     ) -> Result<Vec<MergedPullRequest>> {
-        let mut all_prs = Vec::new();
         let repos = self.list_repositories_for_project(project_id)?;
 
-        for repo in repos {
-            let repo_str = format!("{}/{}", repo.owner, repo.name);
-            let mut prs = self.get_pull_requests(&repo_str)?;
-            all_prs.append(&mut prs);
-        }
+        let mut all_prs = repos
+            .into_iter()
+            .flat_map(|repo| {
+                let repo_str = format!("{}/{}", repo.owner, repo.name);
+                self.get_pull_requests(&repo_str).unwrap_or_default()
+            })
+            .collect::<Vec<_>>();
 
-        // Sort by merged date, most recent first
         all_prs.sort_by(|a, b| b.merged_at.cmp(&a.merged_at));
         Ok(all_prs)
     }
