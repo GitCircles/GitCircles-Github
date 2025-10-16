@@ -304,6 +304,14 @@ mod tests {
     }
 
     #[test]
+    fn valid_example_p2pk_address_passes_validation() {
+        // Provided example address should pass the project's P2PK validation
+        let addr_str = "9fZZEJVg7z29LARcVTffLKaxBW19dL1wiX34zSnE2rrWfMd2qcz";
+        let parsed = WalletAddress::try_from(addr_str)
+            .expect("expected valid P2PK wallet address to be accepted");
+        assert_eq!(parsed.as_str(), addr_str);
+
+    #[test]
     fn try_parse_repo() {
         let valid_repo = "owner/repo";
         let invalid_no_slash = "ownerrepo";

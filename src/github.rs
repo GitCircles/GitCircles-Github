@@ -7,6 +7,10 @@ use crate::types::{
     GitCirclesError, MergedPullRequest, Result, WalletAddress, WalletFetchOutcome,
 };
 
+// Minimal, local constants for wallet fetch path
+const PROFILE_REPO_NAME: &str = "gitcircles-profile";
+const WALLET_FILE_PATH: &str = "P2PK.pub";
+
 pub struct GitHubClient {
     octocrab: Octocrab,
 }
@@ -130,11 +134,10 @@ impl GitHubClient {
         &self,
         login: &str,
     ) -> Result<Option<WalletFetchOutcome>> {
-        let repo_name = "gitcircles-payment-address";
-        let repo_full = format!("{}/{}", login, repo_name);
+        let repo_full = format!("{}/{}", login, PROFILE_REPO_NAME);
 
         // Step 1: Get repository metadata to find default branch
-        let repo_result = self.octocrab.repos(login, repo_name).get().await;
+        let repo_result = self.octocrab.repos(login, PROFILE_REPO_NAME).get().await;
 
         let default_branch = match repo_result {
             Ok(repo) => repo.default_branch.unwrap_or_else(|| "main".to_string()),
@@ -152,12 +155,11 @@ impl GitHubClient {
 
         // Step 3: Try fetching raw file from each branch
         let client = reqwest::Client::new();
-        let file_path = "P2PK.pub";
 
         for branch in &branches {
             let url = format!(
                 "https://raw.githubusercontent.com/{}/{}/{}/{}",
-                login, repo_name, branch, file_path
+                login, PROFILE_REPO_NAME, branch, WALLET_FILE_PATH
             );
 
             match client.get(&url).send().await {

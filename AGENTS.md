@@ -136,7 +136,7 @@ cargo test
 ### Wallet Address Requirements
 
 To use wallet features, users must:
-1. Create a public repository named `gitcircles-payment-address`
+1. Create a public repository named `gitcircles-profile`
 2. Add a file named `P2PK.pub` containing their Ergo wallet address
 3. The address must be in P2PK format (starting with `9`, 51 characters)
 
@@ -226,7 +226,7 @@ GET /repos/{owner}/{repo}/pulls?state=closed&base={branch}&per_page=100&page={n}
 - ✅ `remove-owner <project-id> <username>` - Remove project owners
 
 **`wallet` command:** ✅
-- ✅ `sync <login> [--token]` - Fetch and sync wallet address from `<login>/gitcircles-payment-address`
+- ✅ `sync <login> [--token]` - Fetch and sync wallet address from `<login>/gitcircles-profile`
 - ✅ `show <login>` - Display current wallet info for a user
 - ✅ `history <login>` - Show complete wallet change history
 - ✅ `lookup <address>` - Reverse lookup: find all logins using a wallet address
@@ -311,7 +311,7 @@ Fetches Ergo wallet addresses from user GitHub repositories and maintains bidire
 mapping between GitHub logins and wallet addresses with full history tracking.
 
 **Implementation:**
-- Wallet fetching from `<login>/gitcircles-payment-address` repository (`src/github.rs`)
+- Wallet fetching from `<login>/gitcircles-profile` repository (`src/github.rs`)
 - Database partitions: user_wallets, user_wallet_history, wallet_index (`src/database.rs`)
 - Wallet service with atomic batch writes and change detection (`src/wallet.rs`)
 - CLI commands: sync, show, history, lookup (`src/main.rs`)
@@ -337,4 +337,3 @@ Multi-project support with project ownership and repository grouping.
 - Projects can have multiple owners with different roles
 - Repositories can be associated with projects
 - Project deletion requires all repositories to be unlinked first (safety check)
-
