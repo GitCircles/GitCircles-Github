@@ -242,6 +242,14 @@ pub fn get_database_path() -> Result<String> {
 mod tests {
     use super::*;
 
+    fn mk_valid(len: usize) -> String {
+        // Build a valid Base58-ish string starting with '9'
+        let mut s = String::from("9");
+        // Allowed characters include 'A'; fill to requested length
+        s.push_str(&"A".repeat(len - 1));
+        s
+    }
+
     #[test]
     fn valid_wallet_min_length() {
         let s = mk_valid(51);
@@ -294,7 +302,6 @@ mod tests {
         let addr = WalletAddress::try_from(s.clone()).expect("valid");
         assert_eq!(String::from(addr), s);
     }
-
     #[test]
     fn valid_example_p2pk_address_passes_validation() {
         // Provided example address should pass the project's P2PK validation

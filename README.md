@@ -212,7 +212,7 @@ Arguments:
 #### `wallet sync`
 Fetch and sync wallet address for a GitHub user.
 
-Reads `P2PK.pub` from the user's `gitcircles-payment-address` repository.
+Reads `P2PK.pub` from the user's `gitcircles-profile` repository.
 
 ```bash
 gitcircles-github wallet sync <LOGIN> [OPTIONS]
@@ -268,7 +268,7 @@ gitcircles-github wallet lookup 9hQb8QxZ4gsgAWtGvqh3HPpYCexEQhVsWM4QBQ3AFhSVERPf
 
 To enable wallet tracking, users must create a public GitHub repository with their wallet address:
 
-1. Create a public repository named `gitcircles-payment-address`
+1. Create a public repository named `gitcircles-profile`
 2. Add a file named `P2PK.pub` at the repository root
 3. Put your Ergo P2PK wallet address in the file (single line, no extra whitespace)
 
