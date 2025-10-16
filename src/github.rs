@@ -1,7 +1,6 @@
 use chrono::Utc;
 use indicatif::{ProgressBar, ProgressStyle};
 use octocrab::{Octocrab, Page};
-use std::collections::HashSet;
 use std::time::Duration;
 
 use crate::types::{
@@ -18,12 +17,11 @@ pub struct GitHubClient {
 
 // Trait to allow testing Wallet fetch logic without real network
 // Implemented by GitHubClient; tests can provide a mock implementation.
-#[async_trait::async_trait]
 pub trait WalletFetcher: Send + Sync {
-    async fn fetch_wallet_address(
+    fn fetch_wallet_address(
         &self,
         login: &str,
-    ) -> Result<Option<WalletFetchOutcome>>;
+    ) -> impl std::future::Future<Output = Result<Option<WalletFetchOutcome>>> + Send;
 }
 
 impl GitHubClient {
@@ -153,10 +151,7 @@ impl GitHubClient {
         };
 
         // Step 2: Build branch list with deduplication
-        let mut branches =
-            vec!["main".to_string(), "master".to_string(), default_branch];
-        let mut seen = HashSet::new();
-        branches.retain(|b| seen.insert(b.clone()));
+        let branches = compute_branch_priority(default_branch);
 
         // Step 3: Try fetching raw file from each branch
         let client = reqwest::Client::new();
@@ -222,7 +217,6 @@ impl GitHubClient {
     }
 }
 
-#[async_trait::async_trait]
 impl WalletFetcher for GitHubClient {
     async fn fetch_wallet_address(
         &self,
@@ -233,13 +227,11 @@ impl WalletFetcher for GitHubClient {
 }
 
 // Small helper for testing branch priority logic deterministically without network
-#[allow(dead_code)]
 pub(crate) fn compute_branch_priority(default_branch: String) -> Vec<String> {
-    let mut branches =
-        vec!["main".to_string(), "master".to_string(), default_branch];
-    let mut seen = std::collections::HashSet::new();
-    branches.retain(|b| seen.insert(b.clone()));
-    branches
+    match default_branch.as_str() {
+        "main" | "master" => vec!["main".to_owned(), "master".to_owned()],
+        _ => vec!["main".to_owned(), "master".to_owned(), default_branch],
+    }
 }
 
 #[cfg(test)]
