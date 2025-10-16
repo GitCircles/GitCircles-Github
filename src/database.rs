@@ -413,8 +413,15 @@ mod tests {
     use chrono::TimeZone;
     use tempfile::tempdir;
 
-    fn addr(suffix: &str) -> WalletAddress {
-        let base = format!("9{}{}", "A".repeat(50 - suffix.len()), suffix);
+    /// FIXME(Kivooeo): This is placeholder function I don't know why this needed
+    /// As far as I see it's need for testing,
+    /// So it should be fine me put a valid key here
+    /// Before it was generating a sequence of 'A' with leading '9'
+    /// To create pseudo correct address, now, when the check is real
+    /// It's should give a valid address
+    fn addr() -> WalletAddress {
+        let base =
+            "9hUzb5RvSgDqJdtyCN9Ke496Yy63mpcUJKbRq4swzQ5EQKgygKT".to_string();
         WalletAddress::try_from(base.as_str()).unwrap()
     }
 
@@ -426,7 +433,7 @@ mod tests {
         let uw = UserWallet {
             login: "alice".into(),
             platform: "github".into(),
-            address: addr("X"),
+            address: addr(),
             source: WalletSource::GitHubProfileRepo {
                 login: "alice".into(),
                 branch: "main".into(),
@@ -446,8 +453,8 @@ mod tests {
 
         let login = "bob";
         let platform = "github";
-        let addr1 = addr("1");
-        let addr2 = addr("2");
+        let addr1 = addr();
+        let addr2 = addr();
 
         let e1 = WalletHistoryEntry {
             login: login.into(),
@@ -483,7 +490,7 @@ mod tests {
         let dir = tempdir().unwrap();
         let db = Database::new(dir.path().to_str().unwrap()).unwrap();
         let platform = "github";
-        let address = addr("XYZ");
+        let address = addr();
 
         let l1 = WalletLoginLink {
             wallet: address.clone(),
@@ -512,7 +519,7 @@ mod tests {
         let dir = tempdir().unwrap();
         let db = Database::new(dir.path().to_str().unwrap()).unwrap();
         let platform = "github";
-        let address = addr("ZZ");
+        let address = addr();
 
         let early = Utc.timestamp(2000, 0);
         let late = Utc.timestamp(3000, 0);
@@ -539,7 +546,7 @@ mod tests {
         let db = Database::new(dir.path().to_str().unwrap()).unwrap();
         let login = "dora";
         let platform = "github";
-        let address = addr("B");
+        let address = addr();
 
         let now = Utc::now();
         let uw = UserWallet {
