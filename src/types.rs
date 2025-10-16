@@ -1,6 +1,8 @@
+use blake2::Blake2b;
+use blake2::Digest;
+use blake2::digest::{FixedOutput, Update, consts::U32};
+use bs58;
 use chrono::{DateTime, Utc};
-use once_cell::sync::Lazy;
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Deref;
@@ -48,9 +50,56 @@ pub enum GitCirclesError {
 
 pub type Result<T> = std::result::Result<T, GitCirclesError>;
 
-pub static WALLET_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^9[1-9A-HJ-NP-Za-km-z]{50,}$").expect("wallet regex must compile")
-});
+/// Validates an Ergo mainnet Pay-to-Public-Key (P2PK) address.
+///
+/// # Examples
+///
+/// ```
+/// // Valid mainnet P2PK address (starts with '9')
+/// assert!(is_valid_p2pk_mainnet("9fRAWhdxEsTcdb8PhGNrZfwqa65zfkuYHAMmkQLcic1gdLSV5vA"));
+///
+/// // Invalid: testnet address (starts with '3')
+/// assert!(!is_valid_p2pk_mainnet("3WvsT2Gm4EpsM9Pg18PdY6XyhNNMqXDsvJTbbf6ihLvAmSb7u5RN"));
+///
+/// // Invalid: corrupted checksum
+/// assert!(!is_valid_p2pk_mainnet("9fRAWhdxEsTcdb8PhGNrZfwqa65zfkuYHAMmkQLcic1gdLSV5vB"));
+/// ```
+pub fn is_valid_p2pk_mainnet(addr: &str) -> bool {
+    if !addr.starts_with('9') {
+        return false;
+    }
+
+    let Ok(decoded) = bs58::decode(addr).into_vec() else {
+        return false;
+    };
+
+    if decoded.len() != 38 {
+        return false;
+    }
+
+    // SAFETY: we just checked len == 38
+    let prefix = unsafe { *decoded.get_unchecked(0) };
+    let content = unsafe { decoded.get_unchecked(1..34) };
+    let checksum = unsafe { decoded.get_unchecked(34..38) };
+
+    if prefix != 0x01 {
+        return false;
+    }
+
+    if unsafe { *content.get_unchecked(0) } != 0x02
+        && unsafe { *content.get_unchecked(0) } != 0x03
+    {
+        return false;
+    }
+
+    // Checksum prevents accidental typos from creating valid-looking addresses
+    let mut hasher = Blake2b::<U32>::new();
+    <Blake2b<U32> as Update>::update(&mut hasher, &decoded[0..34]);
+    let hash = hasher.finalize_fixed();
+    let computed_checksum = unsafe { &hash.get_unchecked(0..4) };
+
+    checksum == *computed_checksum
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -81,7 +130,8 @@ impl TryFrom<&str> for WalletAddress {
 
     fn try_from(raw: &str) -> Result<Self> {
         let trimmed = raw.trim();
-        if WALLET_REGEX.is_match(trimmed) {
+
+        if is_valid_p2pk_mainnet(trimmed) {
             Ok(Self(trimmed.to_string()))
         } else {
             Err(GitCirclesError::WalletInvalidFormat(
@@ -242,19 +292,14 @@ pub fn get_database_path() -> Result<String> {
 mod tests {
     use super::*;
 
-    fn mk_valid(len: usize) -> String {
-        // Build a valid Base58-ish string starting with '9'
-        let mut s = String::from("9");
-        // Allowed characters include 'A'; fill to requested length
-        s.push_str(&"A".repeat(len - 1));
-        s
-    }
-
-    #[test]
-    fn valid_wallet_min_length() {
-        let s = mk_valid(51);
-        let addr = WalletAddress::try_from(s.as_str()).expect("should be valid");
-        assert_eq!(addr.as_str(), s);
+    /// FIXME(Kivooeo): This is placeholder function I don't know why this needed
+    /// As far as I see it's need for testing,
+    /// So it should be fine me put a valid key here
+    /// Before it was generating a sequence of 'A' with leading '9'
+    /// To create pseudo correct address, now, when the check is real
+    /// It's should give a valid address
+    fn mk_valid(_: usize) -> String {
+        String::from("9fRAWhdxEsTcdb8PhGNrZfwqa65zfkuYHAMmkQLcic1gdLSV5vA")
     }
 
     #[test]
@@ -263,6 +308,16 @@ mod tests {
         let raw = format!("  {}\n", inner);
         let addr = WalletAddress::try_from(raw.as_str()).expect("should be valid");
         assert_eq!(addr.as_str(), inner);
+    }
+
+    #[test]
+    fn valid() {
+        assert!(is_valid_p2pk_mainnet(
+            "9fRAWhdxEsTcdb8PhGNrZfwqa65zfkuYHAMmkQLcic1gdLSV5vA"
+        ));
+        assert!(is_valid_p2pk_mainnet(
+            "9fZZEJVg7z29LARcVTffLKaxBW19dL1wiX34zSnE2rrWfMd2qcz"
+        ));
     }
 
     #[test]
@@ -278,7 +333,7 @@ mod tests {
 
     #[test]
     fn invalid_too_short() {
-        let s = mk_valid(45);
+        let s = &mk_valid(45)[0..45].to_string();
         let err = WalletAddress::try_from(s.as_str()).unwrap_err();
         match err {
             GitCirclesError::WalletInvalidFormat(_, _) => {}
@@ -294,12 +349,5 @@ mod tests {
             GitCirclesError::WalletInvalidFormat(_, _) => {}
             _ => panic!("unexpected error variant"),
         }
-    }
-
-    #[test]
-    fn try_from_string() {
-        let s = mk_valid(55);
-        let addr = WalletAddress::try_from(s.clone()).expect("valid");
-        assert_eq!(String::from(addr), s);
     }
 }

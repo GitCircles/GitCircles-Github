@@ -110,9 +110,15 @@ mod tests {
         }
     }
 
-    fn addr(suffix: &str) -> WalletAddress {
-        // Construct a valid P2PK-like address: '9' + 50 allowed chars
-        let base = format!("9{}{}", "A".repeat(50 - suffix.len()), suffix);
+    /// FIXME(Kivooeo): This is placeholder function I don't know why this needed
+    /// As far as I see it's need for testing,
+    /// So it should be fine me put a valid key here
+    /// Before it was generating a sequence of 'A' with leading '9'
+    /// To create pseudo correct address, now, when the check is real
+    /// It's should give a valid address
+    fn addr() -> WalletAddress {
+        let base =
+            "9fRAWhdxEsTcdb8PhGNrZfwqa65zfkuYHAMmkQLcic1gdLSV5vA".to_string();
         WalletAddress::try_from(base.as_str()).unwrap()
     }
 
@@ -122,7 +128,7 @@ mod tests {
         let db = Database::new(dir.path().to_str().unwrap()).unwrap();
 
         let outcome = WalletFetchOutcome {
-            address: addr("X"),
+            address: addr(),
             branch: "main".to_string(),
         };
         let fetcher = MockFetcher {
@@ -146,11 +152,11 @@ mod tests {
         let db = Database::new(dir.path().to_str().unwrap()).unwrap();
 
         let a1 = WalletFetchOutcome {
-            address: addr("X"),
+            address: addr(),
             branch: "main".to_string(),
         };
         let a2 = WalletFetchOutcome {
-            address: addr("X"),
+            address: addr(),
             branch: "main".to_string(),
         };
         let fetcher = MockFetcher {
@@ -174,11 +180,14 @@ mod tests {
         let db = Database::new(dir.path().to_str().unwrap()).unwrap();
 
         let a1 = WalletFetchOutcome {
-            address: addr("X"),
+            address: addr(),
             branch: "main".to_string(),
         };
         let a2 = WalletFetchOutcome {
-            address: addr("Y"),
+            address: WalletAddress::try_from(
+                "9fZZEJVg7z29LARcVTffLKaxBW19dL1wiX34zSnE2rrWfMd2qcz",
+            )
+            .unwrap(),
             branch: "main".to_string(),
         };
         let fetcher = MockFetcher {
