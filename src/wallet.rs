@@ -118,7 +118,7 @@ mod tests {
     /// It's should give a valid address
     fn addr() -> WalletAddress {
         let base =
-            "9fRAWhdxEsTcdb8PhGNrZfwqa65zfkuYHAMmkQLcic1gdLSV5vA".to_string();
+            "9hUzb5RvSgDqJdtyCN9Ke496Yy63mpcUJKbRq4swzQ5EQKgygKT".to_string();
         WalletAddress::try_from(base.as_str()).unwrap()
     }
 

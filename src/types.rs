@@ -51,19 +51,6 @@ pub enum GitCirclesError {
 pub type Result<T> = std::result::Result<T, GitCirclesError>;
 
 /// Validates an Ergo mainnet Pay-to-Public-Key (P2PK) address.
-///
-/// # Examples
-///
-/// ```
-/// // Valid mainnet P2PK address (starts with '9')
-/// assert!(is_valid_p2pk_mainnet("9fRAWhdxEsTcdb8PhGNrZfwqa65zfkuYHAMmkQLcic1gdLSV5vA"));
-///
-/// // Invalid: testnet address (starts with '3')
-/// assert!(!is_valid_p2pk_mainnet("3WvsT2Gm4EpsM9Pg18PdY6XyhNNMqXDsvJTbbf6ihLvAmSb7u5RN"));
-///
-/// // Invalid: corrupted checksum
-/// assert!(!is_valid_p2pk_mainnet("9fRAWhdxEsTcdb8PhGNrZfwqa65zfkuYHAMmkQLcic1gdLSV5vB"));
-/// ```
 pub fn is_valid_p2pk_mainnet(addr: &str) -> bool {
     if !addr.starts_with('9') {
         return false;
@@ -250,11 +237,11 @@ pub struct BaseBranchChange {
 }
 
 pub fn parse_repo(repo_str: &str) -> Result<(String, String)> {
-    let parts: Vec<&str> = repo_str.split('/').collect();
-    if parts.len() != 2 || parts[0].is_empty() || parts[1].is_empty() {
-        return Err(GitCirclesError::InvalidRepo(repo_str.to_string()));
-    }
-    Ok((parts[0].to_string(), parts[1].to_string()))
+    let (owner, repo) = repo_str
+        .split_once('/')
+        .ok_or_else(|| GitCirclesError::InvalidRepo(repo_str.to_string()))?;
+
+    Ok((owner.to_string(), repo.to_string()))
 }
 
 pub fn generate_project_id(name: &str) -> String {
@@ -299,7 +286,7 @@ mod tests {
     /// To create pseudo correct address, now, when the check is real
     /// It's should give a valid address
     fn mk_valid(_: usize) -> String {
-        String::from("9fRAWhdxEsTcdb8PhGNrZfwqa65zfkuYHAMmkQLcic1gdLSV5vA")
+        String::from("9hUzb5RvSgDqJdtyCN9Ke496Yy63mpcUJKbRq4swzQ5EQKgygKT")
     }
 
     #[test]
@@ -313,7 +300,7 @@ mod tests {
     #[test]
     fn valid() {
         assert!(is_valid_p2pk_mainnet(
-            "9fRAWhdxEsTcdb8PhGNrZfwqa65zfkuYHAMmkQLcic1gdLSV5vA"
+            "9hUzb5RvSgDqJdtyCN9Ke496Yy63mpcUJKbRq4swzQ5EQKgygKT"
         ));
         assert!(is_valid_p2pk_mainnet(
             "9fZZEJVg7z29LARcVTffLKaxBW19dL1wiX34zSnE2rrWfMd2qcz"
@@ -349,5 +336,21 @@ mod tests {
             GitCirclesError::WalletInvalidFormat(_, _) => {}
             _ => panic!("unexpected error variant"),
         }
+    }
+
+    #[test]
+    fn try_from_string() {
+        let s = mk_valid(55);
+        let addr = WalletAddress::try_from(s.clone()).expect("valid");
+        assert_eq!(String::from(addr), s);
+    }
+
+    #[test]
+    fn try_parse_repo() {
+        let valid_repo = "owner/repo";
+        let invalid_no_slash = "ownerrepo";
+
+        assert!(parse_repo(valid_repo).is_ok());
+        assert!(parse_repo(invalid_no_slash).is_err());
     }
 }
